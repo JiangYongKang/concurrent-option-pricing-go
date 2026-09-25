@@ -9,6 +9,7 @@
 go build ./...        # 编译
 go test ./...         # 单元测试与集成测试
 go test -race ./...   # 竞态检测（要求无数据竞争）
+go run ./cmd/gensnap  # 重新生成 testdata/snapshots（输出逐字节可复现）
 ```
 
 测试日志（`go test -v`）会打印关键输入与判定依据，例如失败报价的具体
