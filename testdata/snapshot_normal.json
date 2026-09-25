@@ -1,0 +1,21 @@
+{
+  "name": "normal-2026-09-26",
+  "spot": 100.0,
+  "rateQuotes": [
+    {"tenor": 0.25, "discountFactor": 0.995012},
+    {"tenor": 0.5,  "discountFactor": 0.990050},
+    {"tenor": 1.0,  "discountFactor": 0.980199},
+    {"tenor": 2.0,  "discountFactor": 0.960789}
+  ],
+  "volQuotes": [
+    {"expiry": 0.25, "strike": 90,  "price": 11.309919, "isCall": true},
+    {"expiry": 0.25, "strike": 100, "price": 4.232160,  "isCall": true},
+    {"expiry": 0.25, "strike": 110, "price": 0.908238,  "isCall": true},
+    {"expiry": 0.5,  "strike": 90,  "price": 12.846455, "isCall": true},
+    {"expiry": 0.5,  "strike": 100, "price": 6.120654,  "isCall": true},
+    {"expiry": 0.5,  "strike": 110, "price": 2.230439,  "isCall": true},
+    {"expiry": 1.0,  "strike": 90,  "price": 15.429933, "isCall": true},
+    {"expiry": 1.0,  "strike": 100, "price": 8.916037,  "isCall": true},
+    {"expiry": 1.0,  "strike": 110, "price": 4.561227,  "isCall": true}
+  ]
+}

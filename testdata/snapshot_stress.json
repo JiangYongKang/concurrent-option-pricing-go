@@ -1,0 +1,21 @@
+{
+  "name": "stress-highvol-2026-09-26",
+  "spot": 100.0,
+  "rateQuotes": [
+    {"tenor": 0.25, "discountFactor": 0.987578},
+    {"tenor": 0.5,  "discountFactor": 0.975310},
+    {"tenor": 1.0,  "discountFactor": 0.951229},
+    {"tenor": 2.0,  "discountFactor": 0.904837}
+  ],
+  "volQuotes": [
+    {"expiry": 0.25, "strike": 90,  "price": 14.345425, "isCall": true},
+    {"expiry": 0.25, "strike": 100, "price": 7.568018,  "isCall": true},
+    {"expiry": 0.25, "strike": 110, "price": 3.203781,  "isCall": true},
+    {"expiry": 0.5,  "strike": 90,  "price": 17.762873, "isCall": true},
+    {"expiry": 0.5,  "strike": 100, "price": 11.010434, "isCall": true},
+    {"expiry": 0.5,  "strike": 110, "price": 6.138815,  "isCall": true},
+    {"expiry": 1.0,  "strike": 90,  "price": 22.984789, "isCall": true},
+    {"expiry": 1.0,  "strike": 100, "price": 16.128429, "isCall": true},
+    {"expiry": 1.0,  "strike": 110, "price": 10.817919, "isCall": true}
+  ]
+}
