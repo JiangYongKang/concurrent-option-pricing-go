@@ -1,0 +1,151 @@
+{
+  "id": "duplicate-option",
+  "asOf": "2026-09-26",
+  "spot": 100,
+  "rates": [
+    {
+      "tenor": 0.25,
+      "rate": 0.03
+    },
+    {
+      "tenor": 0.5,
+      "rate": 0.032
+    },
+    {
+      "tenor": 1,
+      "rate": 0.035
+    },
+    {
+      "tenor": 2,
+      "rate": 0.038
+    }
+  ],
+  "options": [
+    {
+      "expiry": 0.25,
+      "strike": 80,
+      "right": "Call",
+      "price": 20.78703506877106
+    },
+    {
+      "expiry": 0.25,
+      "strike": 90,
+      "right": "Call",
+      "price": 11.746420618678883
+    },
+    {
+      "expiry": 0.25,
+      "strike": 100,
+      "right": "Call",
+      "price": 4.901983365661252
+    },
+    {
+      "expiry": 0.25,
+      "strike": 110,
+      "right": "Call",
+      "price": 1.4073472765871884
+    },
+    {
+      "expiry": 0.25,
+      "strike": 120,
+      "right": "Call",
+      "price": 0.3077685666875487
+    },
+    {
+      "expiry": 0.5,
+      "strike": 80,
+      "right": "Call",
+      "price": 22.01985726992484
+    },
+    {
+      "expiry": 0.5,
+      "strike": 90,
+      "right": "Call",
+      "price": 13.62763500670836
+    },
+    {
+      "expiry": 0.5,
+      "strike": 100,
+      "right": "Call",
+      "price": 7.115472227755674
+    },
+    {
+      "expiry": 0.5,
+      "strike": 110,
+      "right": "Call",
+      "price": 3.1221041098706657
+    },
+    {
+      "expiry": 0.5,
+      "strike": 120,
+      "right": "Call",
+      "price": 1.2474347698579464
+    },
+    {
+      "expiry": 1,
+      "strike": 80,
+      "right": "Call",
+      "price": 24.58688290951607
+    },
+    {
+      "expiry": 1,
+      "strike": 90,
+      "right": "Call",
+      "price": 16.76242906741897
+    },
+    {
+      "expiry": 1,
+      "strike": 100,
+      "right": "Call",
+      "price": 10.436418113253922
+    },
+    {
+      "expiry": 1,
+      "strike": 110,
+      "right": "Call",
+      "price": 6.022832513793439
+    },
+    {
+      "expiry": 1,
+      "strike": 120,
+      "right": "Call",
+      "price": 3.413129699054114
+    },
+    {
+      "expiry": 2,
+      "strike": 80,
+      "right": "Call",
+      "price": 29.06165654503564
+    },
+    {
+      "expiry": 2,
+      "strike": 90,
+      "right": "Call",
+      "price": 21.654600223127424
+    },
+    {
+      "expiry": 2,
+      "strike": 100,
+      "right": "Call",
+      "price": 15.399249812437176
+    },
+    {
+      "expiry": 2,
+      "strike": 110,
+      "right": "Call",
+      "price": 10.632355221744362
+    },
+    {
+      "expiry": 2,
+      "strike": 120,
+      "right": "Call",
+      "price": 7.420945129661767
+    },
+    {
+      "expiry": 0.25,
+      "strike": 80,
+      "right": "Call",
+      "price": 20.78703506877106
+    }
+  ]
+}
