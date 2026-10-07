@@ -1,0 +1,145 @@
+{
+  "id": "liquidity-crunch-2026-09-29",
+  "asOf": "2026-09-29",
+  "spot": 100,
+  "rates": [
+    {
+      "tenor": 0.25,
+      "rate": 0.055
+    },
+    {
+      "tenor": 0.5,
+      "rate": 0.058
+    },
+    {
+      "tenor": 1,
+      "rate": 0.062
+    },
+    {
+      "tenor": 2,
+      "rate": 0.065
+    }
+  ],
+  "options": [
+    {
+      "expiry": 0.25,
+      "strike": 80,
+      "right": "Call",
+      "price": 22.795009935506243
+    },
+    {
+      "expiry": 0.25,
+      "strike": 90,
+      "right": "Call",
+      "price": 14.701932558455177
+    },
+    {
+      "expiry": 0.25,
+      "strike": 100,
+      "right": "Call",
+      "price": 8.29301023086176
+    },
+    {
+      "expiry": 0.25,
+      "strike": 110,
+      "right": "Call",
+      "price": 4.124111588608351
+    },
+    {
+      "expiry": 0.25,
+      "strike": 120,
+      "right": "Call",
+      "price": 1.971445076098444
+    },
+    {
+      "expiry": 0.5,
+      "strike": 80,
+      "right": "Call",
+      "price": 26.014440545561932
+    },
+    {
+      "expiry": 0.5,
+      "strike": 90,
+      "right": "Call",
+      "price": 18.369401101178653
+    },
+    {
+      "expiry": 0.5,
+      "strike": 100,
+      "right": "Call",
+      "price": 12.093280330911035
+    },
+    {
+      "expiry": 0.5,
+      "strike": 110,
+      "right": "Call",
+      "price": 7.580499103106419
+    },
+    {
+      "expiry": 0.5,
+      "strike": 120,
+      "right": "Call",
+      "price": 4.813408444698066
+    },
+    {
+      "expiry": 1,
+      "strike": 80,
+      "right": "Call",
+      "price": 31.396789725076104
+    },
+    {
+      "expiry": 1,
+      "strike": 90,
+      "right": "Call",
+      "price": 24.040019407075008
+    },
+    {
+      "expiry": 1,
+      "strike": 100,
+      "right": "Call",
+      "price": 17.813700179226217
+    },
+    {
+      "expiry": 1,
+      "strike": 110,
+      "right": "Call",
+      "price": 13.053516511091587
+    },
+    {
+      "expiry": 1,
+      "strike": 120,
+      "right": "Call",
+      "price": 9.872429806974452
+    },
+    {
+      "expiry": 2,
+      "strike": 80,
+      "right": "Call",
+      "price": 39.59856236164069
+    },
+    {
+      "expiry": 2,
+      "strike": 90,
+      "right": "Call",
+      "price": 32.465535861803694
+    },
+    {
+      "expiry": 2,
+      "strike": 100,
+      "right": "Call",
+      "price": 26.304789124766124
+    },
+    {
+      "expiry": 2,
+      "strike": 110,
+      "right": "Call",
+      "price": 21.447072635472182
+    },
+    {
+      "expiry": 2,
+      "strike": 120,
+      "right": "Call",
+      "price": 18.109786974328948
+    }
+  ]
+}

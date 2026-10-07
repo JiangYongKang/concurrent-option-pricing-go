@@ -23,7 +23,9 @@ go run ./cmd/gensnap  # 重新生成 testdata/snapshots（输出逐字节可复�
 | `calibration` | 贴现曲线与隐含波动率曲面的构建 |
 | `pricing` | 解析解 / 二叉树 / 蒙特卡洛三类估值路径 |
 | `engine` | 带并发上限、路径预算与超时控制的批量估值 |
+| `scenario` | 命名市场状态注册、多状态并发场景评估与跨状态对比 |
 | `testdata/snapshots` | 本地行情快照样例（正常与各类异常） |
+| `testdata/scenarios` | 命名市场状态（正常、极端行情、数据不完整样例） |
 
 ## 市场数据与校准规则
 
@@ -96,3 +98,91 @@ go run ./cmd/gensnap  # 重新生成 testdata/snapshots（输出逐字节可复�
 - 方法间一致性：解析/树/MC 在容差内一致；美式 put ≥ 欧式 put
 - 并发取消：取消不污染缓存、不干扰其他请求；超时受控；
   预算超出按序拒绝；`-race` 下无数据竞争
+
+## 多市场状态场景评估
+
+`scenario` 包在 `engine` 之上提供横向场景评估：把同一批标的放到多个
+命名市场状态下并发估值，并按标的输出跨状态对比结果。
+
+### 市场状态的描述与使用
+
+市场状态就是 `testdata/scenarios/` 下的一份快照 JSON，**状态名即文件名**
+（去掉 `.json`）。当前内置状态（均由 `go run ./cmd/gensnap` 生成，
+逐字节可复现）：
+
+| 状态名 | 描述 |
+|---|---|
+| `normal` | 基准市场（与 `snapshots/normal.json` 相同） |
+| `gap_down` | 极端行情：隔夜跳空 -22%（spot 100→78），波动率与利率同步抬升 |
+| `liquidity_crunch` | 极端行情：流动性急剧收紧，利率大幅上行、波动率曲面整体抬升且微笑变陡 |
+| `incomplete` | 数据不完整样例（利率报价缺失），用于验证“数据不可用”拒绝路径 |
+
+使用方式：
+
+```go
+reg, _ := scenario.LoadRegistry("testdata/scenarios")
+reg.List()               // 列出全部可用状态名（字典序，确定性）
+snap, err := reg.Load("gap_down") // 按名加载；名字不存在返回 ErrUnknownScenario
+```
+
+指定不存在的状态会被**显式拒绝**（`ErrUnknownScenario`，错误信息中列出
+可用状态），绝不静默回退到默认状态。数据缺失/非法的状态会出现在列表里，
+但加载与校准时以 `marketdata`/`calibration` 的可区分错误被拒绝，
+归类为“数据不可用”，绝不用补齐值或默认值蒙混。
+
+### 多状态并发执行的资源与隔离语义
+
+```go
+runner := scenario.NewRunner(reg, scenario.Config{
+    MaxWorkers: 4, PathBudget: 1_000_000, Timeout: 10 * time.Second,
+    MaxCacheEntries: 1024, DegradeToBinomial: true,
+})
+rep := runner.Run(ctx, []scenario.ScenarioSpec{
+    {Name: "normal"},
+    {Name: "gap_down"},
+    {Name: "liquidity_crunch"},
+}, reqs)
+```
+
+- **共享约束**：一次 `Run` 内所有状态共用同一个 worker 池
+  （`MaxWorkers`）、同一份跨状态路径预算（`PathBudget`，按
+  “状态顺序 × 请求顺序”确定性预分配，超预算即拒绝或按策略降级）
+  与同一个整批超时（`Timeout`）。
+- **隔离**：每个状态有独立的校准结果与结果缓存，中间结果绝不跨状态
+  共享（同一请求同一种子在不同状态下结果不同，可证无缓存串扰）。
+  `ScenarioSpec.Ctx` 可为单个状态叠加独立上下文：该状态被取消/超时时
+  只有它自己的请求记为取消/超时，其余状态照常完成；被取消的状态
+  不回写缓存、不留半截状态，用新上下文重跑即可正常完成。
+- **可复现**：每个请求的随机性只来自其自身 `Seed`；相同快照、相同
+  种子、相同并发安排下结果逐位一致（见
+  `TestRunReproducibleAcrossLayouts`，`MaxWorkers=1` 与 `8` 结果相同）。
+- **资源受控**：缓存按状态分隔且条目数有上限（`MaxCacheEntries`，
+  满了即停止插入，只影响加速不影响结果），`Run` 结束后各状态的
+  校准现场与缓存整体释放，占用不随状态数量无限增长。
+
+### 对比结果与判定分类
+
+`Report.Compare()` 按标的给出跨状态对比行（行序同请求、列序同状态）。
+每个标的在每个状态下的结论三选一：
+
+| 结论 | 含义 |
+|---|---|
+| `已定价` | 正常算出结果 |
+| `已降级` | 按策略降级（`DegradeToBinomial`：MC 未收敛/超预算回退二叉树），保留原始原因 |
+| `已拒绝` | 被明确拒绝，不返回任何冒充成功的数值 |
+
+拒绝/降级原因分门别类（`Reason`）：数据不可用、市场状态不存在、
+方法不适用、采样未收敛、参数越界、超出路径预算、已取消、已超时。
+测试日志（`go test -v ./scenario/`）会打印每个状态下每个标的的
+结论、实际使用方法、价格与原因分类。
+
+### 本机复现与验证
+
+```bash
+go run ./cmd/gensnap        # 重新生成全部快照与场景（逐字节可复现）
+go test ./scenario/ -v      # 场景评估测试：状态选取、未知状态拒绝、
+                            # 跨状态隔离与可复现、单状态取消/超时、
+                            # 数据缺失拒绝、共享预算、降级、缓存有界
+go test ./...               # 全量回归（含原有校准与估值用例）
+go test -race ./...         # 竞态检测
+```
