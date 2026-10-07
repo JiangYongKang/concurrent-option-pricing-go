@@ -33,6 +33,9 @@ type Request struct {
 	Method pricing.Method
 	Seed   uint64 // 蒙特卡洛种子；其他方法忽略
 	Paths  int    // 蒙特卡洛路径数；<=0 时使用 Config.PerReqPaths
+	// Env 非 nil 时按请求覆盖引擎绑定的市场环境（用于同一引擎承载
+	// 同一校准状态下不同标的各自的曲面取值）；nil 时使用引擎环境。
+	Env *pricing.MarketEnv
 }
 
 // Result 是一次估值结果。
@@ -48,6 +51,7 @@ type Config struct {
 	PathBudget  int64         // 单批次蒙特卡洛路径总预算；<=0 表示不限
 	PerReqPaths int           // 每个 MC 请求的默认路径数；<=0 时取 100000
 	Timeout     time.Duration // 单批次超时；<=0 表示不限
+	CacheLimit  int           // 成功结果缓存条目上限；<=0 表示不限
 }
 
 func (c *Config) withDefaults() Config {
@@ -61,12 +65,16 @@ func (c *Config) withDefaults() Config {
 	return out
 }
 
-// cacheKey 是结果缓存键。
+// cacheKey 是结果缓存键。请求覆盖环境时，按环境“值”参与键，
+// 使同一工具在不同曲面取值下互不串扰，同时相同环境值即使来自
+// 不同指针也能命中缓存。
 type cacheKey struct {
 	spec   pricing.Spec
 	method pricing.Method
 	seed   uint64
 	paths  int
+	env    pricing.MarketEnv
+	hasEnv bool
 }
 
 // Engine 在固定市场环境下执行批量估值。
@@ -98,24 +106,15 @@ func (e *Engine) PriceBatch(ctx context.Context, reqs []Request) []Result {
 	}
 
 	// 预算预分配：按请求顺序确定性地分配，保证与并发调度无关。
-	unlimited := e.cfg.PathBudget <= 0
 	budgetLeft := e.cfg.PathBudget
 	runnable := make([]bool, len(reqs))
 	for i, r := range reqs {
-		if r.Method != pricing.MonteCarlo {
-			runnable[i] = true
+		ok, err := e.PlanOne(r, &budgetLeft)
+		if err != nil {
+			results[i].Err = err
 			continue
 		}
-		paths := int64(e.pathsFor(r))
-		if !unlimited && paths > budgetLeft {
-			results[i].Err = fmt.Errorf("%w: 请求 %s 需要 %d 条路径，剩余预算 %d",
-				ErrBudgetExceeded, r.ID, paths, budgetLeft)
-			continue
-		}
-		if !unlimited {
-			budgetLeft -= paths
-		}
-		runnable[i] = true
+		runnable[i] = ok
 	}
 
 	type job struct{ idx int }
@@ -151,13 +150,76 @@ func (e *Engine) pathsFor(r Request) int {
 	return e.cfg.PerReqPaths
 }
 
+// PlanOne 按“引擎批次预算”的视角为一个请求预分配路径预算。
+//
+// 预算上限取自 e.cfg.PathBudget：<=0 表示该引擎批次不限预算。
+// 需要在多个引擎之间共享一份外部预算的调用方（例如多状态运行器）
+// 应使用纯函数式的 PlanRequest。
+func (e *Engine) PlanOne(r Request, budgetLeft *int64) (bool, error) {
+	return PlanRequest(r, e.cfg.PathBudget, e.cfg.PerReqPaths, budgetLeft)
+}
+
+// PlanRequest 是确定性的纯函数式路径预算规划：
+//
+//   - 非 MC 请求不占预算，恒返回 (true, nil)；
+//   - budget <= 0 表示不限预算；
+//   - 否则当请求所需路径数超过 *budgetLeft 时返回包装了
+//     ErrBudgetExceeded 的错误且不扣减预算；否则扣减并返回 (true, nil)。
+//
+// 按请求顺序逐个调用即可得到与并发调度无关的确定性分配结果。
+func PlanRequest(r Request, budget int64, perReqPaths int, budgetLeft *int64) (bool, error) {
+	if r.Method != pricing.MonteCarlo {
+		return true, nil
+	}
+	paths := r.Paths
+	if paths <= 0 {
+		paths = perReqPaths
+	}
+	if paths <= 0 {
+		paths = 100000
+	}
+	if budget > 0 {
+		if int64(paths) > *budgetLeft {
+			return false, fmt.Errorf("%w: 请求 %s 需要 %d 条路径，剩余预算 %d",
+				ErrBudgetExceeded, r.ID, paths, *budgetLeft)
+		}
+		*budgetLeft -= int64(paths)
+	}
+	return true, nil
+}
+
+// PriceOne 在本引擎的市场环境下执行单个估值请求（含缓存读写）。
+//
+// 与 PriceBatch 中的单请求路径语义完全一致：ctx 已取消/超时时返回
+// 对应错误且不回写缓存，因此调用方可以用各自独立的上下文驱动
+// 同一引擎而不互相污染缓存。
+func (e *Engine) PriceOne(ctx context.Context, r Request) Result {
+	var out Result
+	out.ID = r.ID
+	e.runOne(ctx, r, &out)
+	return out
+}
+
+// CacheLen 返回当前成功结果缓存的条目数（主要用于测试与资源观测）。
+func (e *Engine) CacheLen() int {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return len(e.cache)
+}
+
 // runOne 执行单个请求。取消时不写缓存。
 func (e *Engine) runOne(ctx context.Context, r Request, out *Result) {
 	if err := ctx.Err(); err != nil {
 		out.Err = err
 		return
 	}
+	env := e.env
 	key := cacheKey{spec: r.Spec, method: r.Method, seed: r.Seed, paths: e.pathsFor(r)}
+	if r.Env != nil {
+		env = *r.Env
+		key.env = env
+		key.hasEnv = true
+	}
 	e.mu.Lock()
 	cached, hit := e.cache[key]
 	e.mu.Unlock()
@@ -165,7 +227,7 @@ func (e *Engine) runOne(ctx context.Context, r Request, out *Result) {
 		out.Price = cached
 		return
 	}
-	price, err := pricing.Price(r.Spec, e.env, r.Method, pricing.MCParams{
+	price, err := pricing.Price(r.Spec, env, r.Method, pricing.MCParams{
 		Paths: e.pathsFor(r),
 		Seed:  r.Seed,
 	})
@@ -180,6 +242,14 @@ func (e *Engine) runOne(ctx context.Context, r Request, out *Result) {
 		return
 	}
 	e.mu.Lock()
+	// 缓存上限：超出时淘汰一个既有条目。Go map 迭代顺序不确定，但淘汰
+	// 只影响命中率、不影响任何价格结果，因此不损害可复现性。
+	if e.cfg.CacheLimit > 0 && len(e.cache) >= e.cfg.CacheLimit {
+		for k := range e.cache {
+			delete(e.cache, k)
+			break
+		}
+	}
 	e.cache[key] = price
 	e.mu.Unlock()
 	out.Price = price
